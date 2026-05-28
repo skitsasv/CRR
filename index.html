@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cyprus Running Routes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{--sand:#F5EFE0;--tc:#C4622D;--strava:#FC4C02;--deep:#1A1A18;--mist:#E8E2D4;--accent:#D4A843;--text:#2C2C28;--green:#6BAE6B;--gold:#FFD700;--silver:#C0C0C0;--bronze:#CD7F32;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans',sans-serif;background:var(--sand);color:var(--text);min-height:100vh;overflow-x:hidden;}
+header{background:var(--deep);padding:0 2rem;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:1000;border-bottom:2px solid var(--tc);}
+.logo{font-family:'Playfair Display',serif;font-size:1.3rem;color:var(--sand);}
+.logo span{color:var(--tc);}
+.tagline{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--accent);letter-spacing:.15em;text-transform:uppercase;}
+nav{display:flex;gap:1rem;align-items:center;}
+nav a{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--mist);text-decoration:none;letter-spacing:.08em;text-transform:uppercase;opacity:.7;transition:opacity .2s;cursor:pointer;}
+nav a:hover,nav a.active{opacity:1;color:var(--accent);}
+.strava-btn{display:flex;align-items:center;gap:.5rem;background:var(--strava);color:white;border:none;padding:.45rem 1rem;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:background .2s;}
+.strava-btn:hover{background:#d93d00;}
+.add-btn{background:var(--tc);color:white;border:none;padding:.45rem 1rem;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:background .2s;}
+.add-btn:hover{background:#a8501f;}
+
+/* HERO */
+.hero-strip{background:var(--tc);padding:2.5rem 2rem 2rem;display:grid;grid-template-columns:1fr 1fr;gap:2rem;align-items:end;}
+.hero-strip h1{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,3rem);color:var(--sand);line-height:1.05;font-weight:900;}
+.hero-strip h1 em{font-style:italic;color:var(--accent);}
+.stat-row{display:flex;gap:2rem;justify-content:flex-end;}
+.stat{text-align:right;}
+.stat-num{font-family:'Playfair Display',serif;font-size:1.8rem;color:var(--sand);font-weight:700;line-height:1;}
+.stat-label{font-family:'DM Mono',monospace;font-size:.58rem;color:rgba(245,239,224,.6);text-transform:uppercase;letter-spacing:.1em;}
+
+/* STRAVA BANNER */
+.strava-banner{background:linear-gradient(135deg,#1a1a18,#2a1a0e);border-bottom:1px solid rgba(252,76,2,.2);padding:.8rem 2rem;display:flex;align-items:center;gap:1.5rem;}
+.strava-banner.hidden{display:none;}
+.strava-icon-circle{width:32px;height:32px;background:var(--strava);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.strava-banner-title{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--sand);letter-spacing:.08em;margin-bottom:.1rem;}
+.strava-banner-sub{font-family:'DM Sans',sans-serif;font-size:.72rem;color:rgba(245,239,224,.4);}
+.strava-connect-btn{background:var(--strava);color:white;border:none;padding:.5rem 1.2rem;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:background .2s;}
+.strava-connect-btn:hover{background:#d93d00;}
+
+/* ATHLETE DASHBOARD */
+.athlete-dashboard{display:none;background:linear-gradient(135deg,#1a1a18,#1e1208);border-bottom:1px solid rgba(252,76,2,.2);padding:.85rem 2rem;gap:2rem;align-items:center;}
+.athlete-dashboard.show{display:flex;}
+.athlete-info{display:flex;align-items:center;gap:.8rem;}
+.athlete-avatar{width:40px;height:40px;border-radius:50%;background:var(--strava);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:1rem;color:white;font-weight:700;border:2px solid rgba(252,76,2,.4);}
+.athlete-fullname{font-family:'Playfair Display',serif;font-size:.95rem;color:var(--sand);font-weight:700;}
+.athlete-sub{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--strava);letter-spacing:.08em;text-transform:uppercase;}
+.athlete-kpis{display:flex;gap:1.5rem;flex:1;padding-left:1.5rem;border-left:1px solid rgba(245,239,224,.08);}
+.kpi{text-align:center;}
+.kpi-val{font-family:'DM Mono',monospace;font-size:1rem;font-weight:500;color:var(--accent);}
+.kpi-label{font-family:'DM Mono',monospace;font-size:.52rem;color:rgba(245,239,224,.35);text-transform:uppercase;letter-spacing:.08em;}
+.progress-section{flex:1;padding-left:1.5rem;border-left:1px solid rgba(245,239,224,.08);}
+.progress-label{font-family:'DM Mono',monospace;font-size:.58rem;color:rgba(245,239,224,.4);letter-spacing:.08em;text-transform:uppercase;margin-bottom:.35rem;}
+.progress-bar-wrap{background:rgba(245,239,224,.08);height:5px;width:100%;}
+.progress-bar-fill{background:var(--strava);height:100%;transition:width .8s ease;}
+.progress-text{font-family:'DM Mono',monospace;font-size:.6rem;color:rgba(245,239,224,.45);margin-top:.25rem;}
+.progress-text span{color:var(--strava);}
+.disconnect-btn{background:none;border:1px solid rgba(245,239,224,.1);color:rgba(245,239,224,.3);padding:.28rem .65rem;font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.08em;cursor:pointer;transition:all .2s;}
+.disconnect-btn:hover{border-color:rgba(245,239,224,.3);color:rgba(245,239,224,.6);}
+
+/* TABS */
+.tabs{background:var(--deep);padding:0 2rem;display:flex;gap:0;border-bottom:1px solid rgba(245,239,224,.08);}
+.tab{font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(245,239,224,.45);padding:.85rem 1.2rem;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
+.tab:hover{color:rgba(245,239,224,.7);}
+.tab.active{color:var(--sand);border-bottom-color:var(--tc);}
+
+/* FILTERS */
+.filter-bar{background:var(--deep);padding:.7rem 2rem;display:flex;gap:.65rem;align-items:center;flex-wrap:wrap;border-top:1px solid rgba(245,239,224,.04);}
+.filter-label{font-family:'DM Mono',monospace;font-size:.62rem;color:rgba(245,239,224,.35);letter-spacing:.08em;text-transform:uppercase;margin-right:.3rem;}
+.filter-btn{background:transparent;border:1px solid rgba(245,239,224,.18);color:rgba(245,239,224,.65);padding:.28rem .8rem;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.3rem;}
+.filter-btn:hover,.filter-btn.active{background:var(--tc);border-color:var(--tc);color:white;}
+.filter-btn.strava-filter.active{background:var(--strava);border-color:var(--strava);}
+.diff-dot{width:7px;height:7px;border-radius:50%;display:inline-block;}
+.dot-easy{background:var(--green);}
+.dot-moderate{background:var(--accent);}
+.dot-hard{background:var(--tc);}
+
+/* MAIN LAYOUT */
+.view{display:none;}
+.view.active{display:block;}
+.map-view-inner{display:grid;grid-template-columns:380px 1fr;height:calc(100vh - 64px - 50px - 48px - 44px);min-height:460px;}
+
+/* SIDEBAR */
+.sidebar{background:var(--sand);overflow-y:auto;border-right:1px solid var(--mist);}
+.sidebar::-webkit-scrollbar{width:4px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--tc);}
+#map{width:100%;height:100%;z-index:1;}
+.leaflet-control-attribution{display:none;}
+
+/* ROUTE CARDS */
+.route-card{padding:1rem 1.4rem;border-bottom:1px solid var(--mist);cursor:pointer;transition:background .15s;}
+.route-card:hover{background:var(--mist);}
+.route-card.selected{background:white;border-left:3px solid var(--tc);}
+.route-card.completed{border-left:3px solid var(--strava);}
+.route-card.completed.selected{background:#fff8f5;border-left:3px solid var(--strava);}
+.completed-badge{display:none;align-items:center;gap:.3rem;background:rgba(252,76,2,.08);border:1px solid rgba(252,76,2,.2);padding:.12rem .45rem;margin-bottom:.45rem;width:fit-content;}
+.completed-badge.show{display:flex;}
+.completed-badge span{font-family:'DM Mono',monospace;font-size:.56rem;color:var(--strava);letter-spacing:.07em;text-transform:uppercase;}
+.route-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.35rem;}
+.route-name{font-family:'Playfair Display',serif;font-size:.92rem;font-weight:700;color:var(--deep);line-height:1.2;flex:1;margin-right:.5rem;}
+.diff-badge{font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;padding:.18rem .45rem;flex-shrink:0;}
+.badge-easy{background:rgba(107,174,107,.15);color:#3d7a3d;}
+.badge-moderate{background:rgba(212,168,67,.15);color:#8a6a1a;}
+.badge-hard{background:rgba(196,98,45,.15);color:var(--tc);}
+.route-desc{font-size:.76rem;color:rgba(44,44,40,.58);line-height:1.5;margin-bottom:.6rem;}
+.route-stats{display:flex;gap:1.1rem;}
+.rs{display:flex;flex-direction:column;}
+.rs-val{font-family:'DM Mono',monospace;font-size:.76rem;font-weight:500;color:var(--deep);}
+.rs-key{font-family:'DM Mono',monospace;font-size:.52rem;color:rgba(44,44,40,.38);text-transform:uppercase;letter-spacing:.07em;}
+.route-tags{display:flex;gap:.35rem;margin-top:.6rem;flex-wrap:wrap;}
+.tag{font-family:'DM Mono',monospace;font-size:.52rem;background:var(--mist);color:rgba(44,44,40,.5);padding:.1rem .4rem;}
+.strava-run-info{display:none;margin-top:.55rem;padding:.45rem .65rem;background:rgba(252,76,2,.06);border-left:2px solid var(--strava);}
+.strava-run-info.show{display:block;}
+.strava-run-date{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--strava);letter-spacing:.05em;margin-bottom:.18rem;}
+.strava-run-stats{display:flex;gap:.9rem;}
+.sri-val{font-family:'DM Mono',monospace;font-size:.7rem;font-weight:500;color:var(--deep);}
+.sri-key{font-family:'DM Mono',monospace;font-size:.5rem;color:rgba(44,44,40,.38);text-transform:uppercase;letter-spacing:.06em;}
+
+/* DETAIL PANEL */
+.detail-panel{display:none;position:fixed;bottom:0;left:380px;right:0;background:var(--deep);color:var(--sand);padding:1rem 2rem;z-index:500;border-top:2px solid var(--tc);animation:slideUp .3s ease;}
+.detail-panel.show{display:flex;gap:2rem;align-items:center;}
+.detail-panel.completed-route{border-top-color:var(--strava);}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.detail-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;flex:1;}
+.detail-area{font-family:'DM Mono',monospace;font-size:.58rem;color:rgba(245,239,224,.38);margin-top:.12rem;}
+.detail-stats{display:flex;gap:1.5rem;}
+.ds{text-align:center;}
+.ds-val{font-family:'DM Mono',monospace;font-size:.95rem;font-weight:500;color:var(--accent);}
+.ds-key{font-family:'DM Mono',monospace;font-size:.52rem;color:rgba(245,239,224,.38);text-transform:uppercase;letter-spacing:.07em;}
+.detail-strava-badge{display:none;align-items:center;gap:.45rem;background:rgba(252,76,2,.15);border:1px solid rgba(252,76,2,.3);padding:.35rem .7rem;}
+.detail-strava-badge.show{display:flex;}
+.detail-strava-badge span{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--strava);letter-spacing:.05em;}
+.strava-link-btn{display:none;align-items:center;gap:.35rem;background:var(--strava);color:white;border:none;padding:.38rem .85rem;font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;text-decoration:none;transition:background .2s;}
+.strava-link-btn:hover{background:#d93d00;}
+.strava-link-btn.show{display:flex;}
+.close-panel{background:none;border:1px solid rgba(245,239,224,.18);color:rgba(245,239,224,.38);width:24px;height:24px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0;}
+.close-panel:hover{border-color:var(--tc);color:var(--tc);}
+
+/* ============ LEADERBOARD VIEW ============ */
+.leaderboard-view{padding:2rem;max-width:1100px;margin:0 auto;}
+.lb-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:1.5rem;}
+.lb-title{font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:var(--deep);}
+.lb-subtitle{font-family:'DM Mono',monospace;font-size:.65rem;color:rgba(44,44,40,.45);letter-spacing:.1em;text-transform:uppercase;margin-top:.2rem;}
+.lb-route-select{display:flex;gap:.5rem;flex-wrap:wrap;}
+.lb-route-btn{background:white;border:1px solid var(--mist);border-bottom:2px solid var(--deep);padding:.4rem .9rem;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;transition:all .2s;color:rgba(44,44,40,.6);}
+.lb-route-btn:hover{border-bottom-color:var(--tc);color:var(--text);}
+.lb-route-btn.active{background:var(--deep);color:var(--sand);border-color:var(--deep);}
+
+/* CATEGORY TABS */
+.lb-cats{display:flex;gap:.5rem;margin-bottom:1.5rem;flex-wrap:wrap;}
+.lb-cat-btn{display:flex;align-items:center;gap:.5rem;background:white;border:1px solid var(--mist);padding:.5rem 1rem;font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .2s;color:rgba(44,44,40,.55);}
+.lb-cat-btn:hover{border-color:var(--tc);color:var(--tc);}
+.lb-cat-btn.active{background:var(--tc);border-color:var(--tc);color:white;}
+.lb-cat-icon{font-size:.9rem;}
+
+/* PODIUM */
+.podium-wrap{display:flex;align-items:flex-end;justify-content:center;gap:1rem;margin-bottom:2rem;padding:1.5rem;background:white;border:1px solid var(--mist);}
+.podium-place{display:flex;flex-direction:column;align-items:center;gap:.5rem;}
+.podium-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-weight:700;color:white;flex-shrink:0;}
+.podium-avatar.p1{width:56px;height:56px;font-size:1.2rem;background:var(--tc);}
+.podium-avatar.p2{width:46px;height:46px;font-size:1rem;background:#5A6B3A;}
+.podium-avatar.p3{width:40px;height:40px;font-size:.9rem;background:#4A7A9B;}
+.podium-medal{font-size:1.4rem;line-height:1;}
+.podium-name{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:500;color:var(--deep);text-align:center;letter-spacing:.04em;}
+.podium-val{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--deep);text-align:center;}
+.podium-key{font-family:'DM Mono',monospace;font-size:.52rem;color:rgba(44,44,40,.4);text-transform:uppercase;letter-spacing:.07em;}
+.podium-bar{width:80px;display:flex;align-items:flex-end;justify-content:center;}
+.bar-inner{width:60px;background:var(--mist);display:flex;align-items:flex-end;justify-content:center;}
+.bar-inner.b1{height:80px;background:rgba(196,98,45,.12);border-top:3px solid var(--tc);}
+.bar-inner.b2{height:60px;background:rgba(90,107,58,.1);border-top:3px solid #5A6B3A;}
+.bar-inner.b3{height:44px;background:rgba(74,122,155,.1);border-top:3px solid #4A7A9B;}
+
+/* FULL TABLE */
+.lb-table{background:white;border:1px solid var(--mist);overflow:hidden;}
+.lb-table-header{display:grid;grid-template-columns:48px 1fr 120px 120px 80px;gap:0;background:var(--deep);padding:.6rem 1.2rem;}
+.lb-th{font-family:'DM Mono',monospace;font-size:.58rem;color:rgba(245,239,224,.45);letter-spacing:.1em;text-transform:uppercase;}
+.lb-row{display:grid;grid-template-columns:48px 1fr 120px 120px 80px;gap:0;padding:.75rem 1.2rem;border-bottom:1px solid var(--mist);align-items:center;transition:background .15s;}
+.lb-row:hover{background:#fafaf8;}
+.lb-row:last-child{border-bottom:none;}
+.lb-row.top3{background:rgba(196,98,45,.04);}
+.lb-rank{font-family:'DM Mono',monospace;font-size:.85rem;font-weight:500;color:rgba(44,44,40,.35);}
+.lb-rank.r1{color:var(--gold);font-size:1rem;}
+.lb-rank.r2{color:var(--silver);}
+.lb-rank.r3{color:var(--bronze);}
+.lb-runner{display:flex;align-items:center;gap:.65rem;}
+.lb-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:.65rem;font-weight:500;color:white;flex-shrink:0;}
+.lb-runner-name{font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;color:var(--deep);}
+.lb-runner-city{font-family:'DM Mono',monospace;font-size:.56rem;color:rgba(44,44,40,.38);letter-spacing:.04em;}
+.lb-val{font-family:'DM Mono',monospace;font-size:.8rem;font-weight:500;color:var(--text);}
+.lb-val.highlight{color:var(--tc);font-weight:500;}
+.lb-date{font-family:'DM Mono',monospace;font-size:.6rem;color:rgba(44,44,40,.38);}
+.lb-you-badge{font-family:'DM Mono',monospace;font-size:.52rem;background:rgba(252,76,2,.1);color:var(--strava);border:1px solid rgba(252,76,2,.2);padding:.08rem .4rem;letter-spacing:.06em;margin-left:.4rem;}
+.my-rank-banner{background:rgba(252,76,2,.06);border:1px solid rgba(252,76,2,.15);border-left:3px solid var(--strava);padding:.65rem 1.2rem;margin-bottom:1rem;display:none;align-items:center;gap:1.5rem;}
+.my-rank-banner.show{display:flex;}
+.my-rank-text{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--strava);letter-spacing:.06em;text-transform:uppercase;}
+.my-rank-val{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:700;color:var(--deep);}
+
+/* MODALS */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,26,24,.85);z-index:2000;align-items:center;justify-content:center;}
+.modal-overlay.show{display:flex;}
+.modal{background:var(--sand);width:90%;max-width:520px;padding:2.5rem;border-top:4px solid var(--tc);animation:fadeIn .25s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+.modal h2{font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:700;margin-bottom:.25rem;}
+.modal p{font-size:.8rem;color:rgba(44,44,40,.6);margin-bottom:1.5rem;}
+.form-group{margin-bottom:1rem;}
+label{display:block;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(44,44,40,.55);margin-bottom:.28rem;}
+input,textarea,select{width:100%;background:white;border:1px solid var(--mist);border-bottom:2px solid var(--deep);padding:.55rem .75rem;font-family:'DM Sans',sans-serif;font-size:.85rem;color:var(--text);outline:none;transition:border-color .2s;}
+input:focus,textarea:focus,select:focus{border-bottom-color:var(--tc);}
+textarea{resize:vertical;min-height:75px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem;}
+.modal-actions{display:flex;justify-content:flex-end;gap:.75rem;margin-top:1.5rem;}
+.btn-cancel{background:none;border:1px solid var(--mist);padding:.55rem 1.1rem;font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;color:rgba(44,44,40,.55);transition:all .2s;}
+.btn-cancel:hover{border-color:var(--deep);color:var(--deep);}
+.btn-submit{background:var(--tc);border:none;color:white;padding:.55rem 1.4rem;font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:background .2s;}
+.btn-submit:hover{background:#a8501f;}
+.strava-modal{background:var(--deep);width:90%;max-width:400px;padding:2.5rem;border-top:4px solid var(--strava);animation:fadeIn .25s ease;text-align:center;}
+.strava-modal-logo{width:52px;height:52px;background:var(--strava);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1rem;}
+.strava-modal h2{font-family:'Playfair Display',serif;font-size:1.35rem;color:var(--sand);margin-bottom:.4rem;}
+.strava-modal p{font-size:.78rem;color:rgba(245,239,224,.45);margin-bottom:1.3rem;line-height:1.6;}
+.strava-perms{background:rgba(245,239,224,.05);border:1px solid rgba(245,239,224,.1);padding:.85rem;margin-bottom:1.3rem;text-align:left;}
+.perm-item{display:flex;align-items:center;gap:.45rem;padding:.25rem 0;font-family:'DM Mono',monospace;font-size:.62rem;color:rgba(245,239,224,.55);letter-spacing:.04em;}
+.perm-check{color:var(--strava);}
+.perm-no{color:rgba(245,239,224,.25);}
+.strava-auth-btn{width:100%;background:var(--strava);color:white;border:none;padding:.8rem;font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s;margin-bottom:.65rem;}
+.strava-auth-btn:hover{background:#d93d00;}
+.strava-cancel{background:none;border:none;color:rgba(245,239,224,.25);font-family:'DM Mono',monospace;font-size:.62rem;cursor:pointer;letter-spacing:.05em;transition:color .2s;}
+.strava-cancel:hover{color:rgba(245,239,224,.55);}
+
+/* TOAST */
+.toast{position:fixed;bottom:80px;right:2rem;background:var(--deep);border:1px solid var(--strava);border-left:4px solid var(--strava);color:var(--sand);padding:.75rem 1.1rem;font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.04em;z-index:3000;transform:translateX(140%);transition:transform .4s cubic-bezier(.16,1,.3,1);max-width:280px;}
+.toast.show{transform:translateX(0);}
+.empty-sidebar{padding:2.5rem 1.5rem;text-align:center;color:rgba(44,44,40,.38);}
+.empty-sidebar p{font-family:'DM Mono',monospace;font-size:.72rem;letter-spacing:.04em;}
+
+@media(max-width:768px){
+  .hero-strip{grid-template-columns:1fr;}
+  .map-view-inner{grid-template-columns:1fr;grid-template-rows:42vh auto;height:auto;}
+  .sidebar{max-height:50vh;}
+  .detail-panel.show{left:0;flex-wrap:wrap;}
+  .athlete-kpis,.progress-section{display:none;}
+  nav a{display:none;}
+  .lb-table-header,.lb-row{grid-template-columns:36px 1fr 90px 80px;}
+  .lb-th:nth-child(4),.lb-val:nth-child(4){display:none;}
+}
+
+/* ===== RACES VIEW ===== */
+.races-view{padding:2rem;max-width:1000px;margin:0 auto;}
+.race-hero{background:var(--deep);padding:2rem;margin-bottom:2rem;border-left:4px solid var(--tc);display:grid;grid-template-columns:1fr auto;gap:1rem;align-items:center;}
+.race-hero-title{font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--sand);margin-bottom:.3rem;}
+.race-hero-sub{font-family:'DM Mono',monospace;font-size:.65rem;color:rgba(245,239,224,.45);letter-spacing:.1em;text-transform:uppercase;}
+.race-hero-meta{display:flex;flex-direction:column;gap:.4rem;text-align:right;}
+.race-date{font-family:'DM Mono',monospace;font-size:.72rem;color:var(--accent);letter-spacing:.08em;}
+.race-loc{font-family:'DM Mono',monospace;font-size:.65rem;color:rgba(245,239,224,.4);letter-spacing:.06em;}
+.race-charity{display:inline-flex;align-items:center;gap:.4rem;background:rgba(196,98,45,.15);border:1px solid rgba(196,98,45,.3);padding:.3rem .7rem;margin-top:.5rem;}
+.race-charity span{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--tc);letter-spacing:.06em;text-transform:uppercase;}
+.race-dist-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;}
+.race-dist-btn{background:white;border:1px solid var(--mist);border-bottom:2px solid var(--deep);padding:.45rem 1.1rem;font-family:'DM Mono',monospace;font-size:.68rem;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;transition:all .2s;color:rgba(44,44,40,.55);}
+.race-dist-btn:hover{border-bottom-color:var(--tc);}
+.race-dist-btn.active{background:var(--deep);color:var(--sand);border-color:var(--deep);}
+.race-stats-bar{display:flex;gap:2rem;background:white;border:1px solid var(--mist);padding:1rem 1.5rem;margin-bottom:1.5rem;}
+.rsb{text-align:center;}
+.rsb-val{font-family:'Playfair Display',serif;font-size:1.3rem;font-weight:700;color:var(--tc);}
+.rsb-key{font-family:'DM Mono',monospace;font-size:.55rem;color:rgba(44,44,40,.4);text-transform:uppercase;letter-spacing:.08em;}
+.race-podium{display:flex;align-items:flex-end;justify-content:center;gap:1rem;padding:1.5rem;background:white;border:1px solid var(--mist);margin-bottom:1.5rem;}
+.race-table{background:white;border:1px solid var(--mist);}
+.race-table-header{display:grid;grid-template-columns:44px 1fr 110px 110px 80px;background:var(--deep);padding:.55rem 1.2rem;}
+.race-th{font-family:'DM Mono',monospace;font-size:.56rem;color:rgba(245,239,224,.4);letter-spacing:.1em;text-transform:uppercase;}
+.race-row{display:grid;grid-template-columns:44px 1fr 110px 110px 80px;padding:.7rem 1.2rem;border-bottom:1px solid var(--mist);align-items:center;transition:background .15s;}
+.race-row:hover{background:#fafaf8;}
+.race-row:last-child{border-bottom:none;}
+.race-row.top3{background:rgba(196,98,45,.03);}
+.race-rank{font-family:'DM Mono',monospace;font-size:.85rem;font-weight:500;color:rgba(44,44,40,.3);}
+.race-rank.r1{color:var(--gold);font-size:1rem;}
+.race-rank.r2{color:var(--silver);}
+.race-rank.r3{color:var(--bronze);}
+.race-runner{display:flex;align-items:center;gap:.6rem;}
+.race-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:.62rem;font-weight:500;color:white;flex-shrink:0;}
+.race-runner-name{font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;color:var(--deep);}
+.race-runner-cat{font-family:'DM Mono',monospace;font-size:.54rem;color:rgba(44,44,40,.36);letter-spacing:.04em;}
+.race-time{font-family:'DM Mono',monospace;font-size:.78rem;font-weight:500;color:var(--text);}
+.race-time.winner{color:var(--tc);font-weight:600;}
+.race-pace{font-family:'DM Mono',monospace;font-size:.72rem;color:rgba(44,44,40,.5);}
+.race-bib{font-family:'DM Mono',monospace;font-size:.6rem;color:rgba(44,44,40,.3);}
+.you-badge{font-family:'DM Mono',monospace;font-size:.5rem;background:rgba(252,76,2,.1);color:var(--strava);border:1px solid rgba(252,76,2,.2);padding:.06rem .35rem;letter-spacing:.05em;margin-left:.35rem;}
+.my-result-banner{background:rgba(252,76,2,.06);border:1px solid rgba(252,76,2,.15);border-left:3px solid var(--strava);padding:.6rem 1.2rem;margin-bottom:1rem;display:none;align-items:center;gap:2rem;flex-wrap:wrap;}
+.my-result-banner.show{display:flex;}
+.mrb-label{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--strava);letter-spacing:.06em;text-transform:uppercase;}
+.mrb-val{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--deep);}
+.strava-connect-races{background:rgba(252,76,2,.06);border:1px solid rgba(252,76,2,.2);padding:1rem 1.5rem;display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;}
+.strava-connect-races.hidden{display:none;}
+.scr-text{font-family:'DM Mono',monospace;font-size:.65rem;color:rgba(44,44,40,.55);letter-spacing:.05em;flex:1;}
+.scr-btn{background:var(--strava);color:white;border:none;padding:.4rem .9rem;font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.07em;text-transform:uppercase;cursor:pointer;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Cyprus <span>Running</span> Routes</div>
+    <div class="tagline">Community Route Library · Κύπρος</div>
+  </div>
+  <nav>
+    <a class="active" onclick="switchView('map',this)">🗺 Χάρτης</a>
+    <a onclick="switchView('leaderboard',this)">🏆 Leaderboard</a>
+    <a onclick="switchView('races',this)">🏅 Αγώνες</a>
+    <button class="strava-btn" id="headerStravaBtn" onclick="openStravaModal()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+      Strava
+    </button>
+    <button class="add-btn" onclick="openModal()">+ Route</button>
+  </nav>
+</header>
+
+<div class="strava-banner" id="stravaBanner">
+  <div class="strava-icon-circle"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg></div>
+  <div style="flex:1">
+    <div class="strava-banner-title">ΣΥΝΔΕΣΕ ΤΟ STRAVA ΣΟΥ</div>
+    <div class="strava-banner-sub">Δες ποια routes έχεις τρέξει και εμφανίσου στο Leaderboard.</div>
+  </div>
+  <button class="strava-connect-btn" onclick="openStravaModal()">Σύνδεση →</button>
+</div>
+
+<div class="athlete-dashboard" id="athleteDashboard">
+  <div class="athlete-info">
+    <div class="athlete-avatar" id="dashAvatar">V</div>
+    <div>
+      <div class="athlete-fullname" id="dashName">—</div>
+      <div class="athlete-sub">● Strava Connected</div>
+    </div>
+  </div>
+  <div class="athlete-kpis">
+    <div class="kpi"><div class="kpi-val" id="kpiRuns">—</div><div class="kpi-label">Runs/μήνα</div></div>
+    <div class="kpi"><div class="kpi-val" id="kpiKm">—</div><div class="kpi-label">km/μήνα</div></div>
+    <div class="kpi"><div class="kpi-val" id="kpiPace">—</div><div class="kpi-label">Avg pace</div></div>
+  </div>
+  <div class="progress-section">
+    <div class="progress-label">Routes completed</div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-text"><span id="progressCount">0</span> από 8 routes</div>
+  </div>
+  <button class="disconnect-btn" onclick="disconnectStrava()">Αποσύνδεση</button>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" id="tabMap" onclick="switchView('map',null)">🗺 Χάρτης & Routes</div>
+  <div class="tab" id="tabLb" onclick="switchView('leaderboard',null)">🏆 Leaderboard</div>
+  <div class="tab" id="tabRaces" onclick="switchView('races',null)">🏅 Αγώνες</div>
+</div>
+
+<!-- FILTER BAR (map only) -->
+<div class="filter-bar" id="filterBar">
+  <span class="filter-label">Φίλτρα:</span>
+  <button class="filter-btn active" data-filter="all">Όλα</button>
+  <button class="filter-btn" data-filter="easy"><span class="diff-dot dot-easy"></span>Εύκολο</button>
+  <button class="filter-btn" data-filter="moderate"><span class="diff-dot dot-moderate"></span>Μέτριο</button>
+  <button class="filter-btn" data-filter="hard"><span class="diff-dot dot-hard"></span>Δύσκολο</button>
+  <button class="filter-btn" data-filter="trail">Trail</button>
+  <button class="filter-btn" data-filter="road">Άσφαλτος</button>
+  <button class="filter-btn strava-filter" data-filter="ran" id="ranFilterBtn" style="display:none">
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+    Τα έχω τρέξει
+  </button>
+</div>
+
+<!-- MAP VIEW -->
+<div class="view active" id="viewMap">
+  <div class="map-view-inner">
+    <div class="sidebar" id="sidebar"></div>
+    <div id="map"></div>
+  </div>
+</div>
+
+<!-- LEADERBOARD VIEW -->
+<div class="view" id="viewLeaderboard">
+  <div class="leaderboard-view">
+    <div class="lb-header">
+      <div>
+        <div class="lb-title">Leaderboard</div>
+        <div class="lb-subtitle">Community records · Cyprus Running Routes</div>
+      </div>
+    </div>
+
+    <!-- Route selector -->
+    <div class="lb-route-select" id="lbRouteSelect"></div>
+
+    <br>
+
+    <!-- Category buttons -->
+    <div class="lb-cats">
+      <button class="lb-cat-btn active" data-cat="time" onclick="switchCat('time',this)"><span class="lb-cat-icon">⏱</span> Ταχύτερος Χρόνος</button>
+      <button class="lb-cat-btn" data-cat="pace" onclick="switchCat('pace',this)"><span class="lb-cat-icon">⚡</span> Καλύτερος Ρυθμός</button>
+      <button class="lb-cat-btn" data-cat="runs" onclick="switchCat('runs',this)"><span class="lb-cat-icon">🔁</span> Περισσότερες Φορές</button>
+      <button class="lb-cat-btn" data-cat="elev" onclick="switchCat('elev',this)"><span class="lb-cat-icon">⛰</span> Elevation Record</button>
+    </div>
+
+    <!-- My rank banner -->
+    <div class="my-rank-banner" id="myRankBanner">
+      <div>
+        <div class="my-rank-text">Η θέση σου σε αυτό το route</div>
+        <div class="my-rank-val" id="myRankVal">—</div>
+      </div>
+      <div style="flex:1"></div>
+      <div>
+        <div class="my-rank-text">Το record σου</div>
+        <div class="my-rank-val" id="myRecordVal">—</div>
+      </div>
+    </div>
+
+    <!-- Podium -->
+    <div class="podium-wrap" id="lbPodium"></div>
+
+    <!-- Full table -->
+    <div class="lb-table">
+      <div class="lb-table-header">
+        <div class="lb-th">#</div>
+        <div class="lb-th">Runner</div>
+        <div class="lb-th">Record</div>
+        <div class="lb-th">Ημερομηνία</div>
+        <div class="lb-th"></div>
+      </div>
+      <div id="lbTableBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL PANEL (map) -->
+<div class="detail-panel" id="detailPanel">
+  <div style="flex:1">
+    <div class="detail-title" id="dp-title">—</div>
+    <div class="detail-area" id="dp-area">—</div>
+  </div>
+  <div class="detail-strava-badge" id="dpStravaBadge">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+    <span id="dpStravaText">—</span>
+  </div>
+  <div class="detail-stats">
+    <div class="ds"><div class="ds-val" id="dp-dist">—</div><div class="ds-key">Απόσταση</div></div>
+    <div class="ds"><div class="ds-val" id="dp-elev">—</div><div class="ds-key">Υψόμετρο</div></div>
+    <div class="ds"><div class="ds-val" id="dp-time">—</div><div class="ds-key">Ώρα</div></div>
+    <div class="ds"><div class="ds-val" id="dp-diff">—</div><div class="ds-key">Δυσκολία</div></div>
+  </div>
+  <a class="strava-link-btn" href="#" target="_blank" id="dpStravaLink">
+    <svg width="9" height="9" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+    Strava
+  </a>
+  <button class="close-panel" onclick="closePanel()">✕</button>
+</div>
+
+
+<!-- RACES VIEW -->
+<div class="view" id="viewRaces">
+  <div class="races-view">
+    <div class="race-hero">
+      <div>
+        <div class="race-hero-title">5ο Run for Autism</div>
+        <div class="race-hero-sub">Αγία Νάπα · Αθλητική Διοργάνωση & Φιλανθρωπία</div>
+        <div class="race-charity"><span>💙 100% εσόδων → Smile Project · Αυτισμός</span></div>
+      </div>
+      <div class="race-hero-meta">
+        <div class="race-date">📅 Κυριακή 29 Μαρτίου 2026</div>
+        <div class="race-loc">📍 Nissi Bay → Αγία Θέκλα → Επιστροφή</div>
+        <div class="race-loc">🏃 21km · 10km · 5km · 1km · 500m</div>
+      </div>
+    </div>
+
+    <!-- Distance selector -->
+    <div class="race-dist-tabs">
+      <button class="race-dist-btn active" data-dist="21" onclick="switchRaceDist('21',this)">21km — Ημιμαραθώνιος</button>
+      <button class="race-dist-btn" data-dist="10" onclick="switchRaceDist('10',this)">10km</button>
+      <button class="race-dist-btn" data-dist="5" onclick="switchRaceDist('5',this)">5km</button>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="race-stats-bar" id="raceStatsBar"></div>
+
+    <!-- Strava connect prompt -->
+    <div class="strava-connect-races" id="stravaConnectRaces">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+      <span class="scr-text">Σύνδεσε το Strava σου για να δεις την κατάταξή σου σε αυτόν τον αγώνα.</span>
+      <button class="scr-btn" onclick="openStravaModal()">Σύνδεση Strava</button>
+    </div>
+
+    <!-- My result banner -->
+    <div class="my-result-banner" id="myResultBanner">
+      <div><div class="mrb-label">Κατάταξή σου</div><div class="mrb-val" id="myResultRank">—</div></div>
+      <div><div class="mrb-label">Χρόνος σου</div><div class="mrb-val" id="myResultTime">—</div></div>
+      <div><div class="mrb-label">Ρυθμός</div><div class="mrb-val" id="myResultPace">—</div></div>
+      <div><div class="mrb-label">Κατηγορία</div><div class="mrb-val" id="myResultCat">—</div></div>
+    </div>
+
+    <!-- Podium -->
+    <div class="race-podium" id="racePodium"></div>
+
+    <!-- Full results table -->
+    <div class="race-table">
+      <div class="race-table-header">
+        <div class="race-th">#</div>
+        <div class="race-th">Runner</div>
+        <div class="race-th">Χρόνος</div>
+        <div class="race-th">Pace</div>
+        <div class="race-th">BIB</div>
+      </div>
+      <div id="raceTableBody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ROUTE MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>Πρόσθεσε Route</h2>
+    <p>Μοιράσου ένα route με την κυπριακή running κοινότητα.</p>
+    <div class="form-group"><label>Όνομα Route</label><input type="text" placeholder="π.χ. Τροόδος Κυκλικό 10K"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Περιοχή</label><select><option>Λεμεσός</option><option>Λευκωσία</option><option>Λάρνακα</option><option>Πάφος</option><option>Τροόδος</option><option>Αμμόχωστος</option></select></div>
+      <div class="form-group"><label>Δυσκολία</label><select><option>Εύκολο</option><option>Μέτριο</option><option>Δύσκολο</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Απόσταση (km)</label><input type="number" placeholder="10.5"></div>
+      <div class="form-group"><label>Υψόμετρο (m)</label><input type="number" placeholder="250"></div>
+    </div>
+    <div class="form-group"><label>Περιγραφή</label><textarea placeholder="Terrain, highlights, tips..."></textarea></div>
+    <div class="form-group"><label>Strava / GPX Link</label><input type="url" placeholder="https://www.strava.com/routes/..."></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Ακύρωση</button>
+      <button class="btn-submit" onclick="submitRoute()">Υποβολή</button>
+    </div>
+  </div>
+</div>
+
+<!-- STRAVA MODAL -->
+<div class="modal-overlay" id="stravaModalOverlay">
+  <div class="strava-modal">
+    <div class="strava-modal-logo"><svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg></div>
+    <h2>Σύνδεση με Strava</h2>
+    <p>Δες ποια routes έχεις τρέξει και εμφανίσου στο Community Leaderboard.</p>
+    <div class="strava-perms">
+      <div class="perm-item"><span class="perm-check">✓</span> Ανάγνωση activities (read-only)</div>
+      <div class="perm-item"><span class="perm-check">✓</span> Εμφάνιση στο leaderboard</div>
+      <div class="perm-item"><span class="perm-check">✓</span> Personal pace & time records</div>
+      <div class="perm-item"><span class="perm-no">✗</span> Δεν γράφουμε τίποτα στο Strava</div>
+    </div>
+    <button class="strava-auth-btn" onclick="initiateStravaLogin()">Συνέχεια με Strava →</button>
+    <button class="strava-cancel" onclick="closeStravaModal()">Ακύρωση</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const routes=[
+  {id:1,name:"Dassoudi Coastal Loop",area:"Λεμεσός",desc:"Ο κλασικός της Λεμεσού. Παραλιακό route με θέα στη Μεσόγειο, ιδανικό για πρωινές εξόδους.",distance:"8.5",elevation:"35",time:"42–55'",difficulty:"easy",type:"road",tags:["flat","coastal","πρωινό"],lat:34.685,lng:33.055},
+  {id:2,name:"Troodos Atalanti Trail",area:"Τροόδος",desc:"Το αγαπημένο trail του Τροόδους. Μέσα στο δάσος, με έλατα και πευκοδάση. Τεχνική επιφάνεια.",distance:"14",elevation:"620",time:"1h45'–2h20'",difficulty:"hard",type:"trail",tags:["trail","forest","elevation"],lat:34.921,lng:32.878},
+  {id:3,name:"Lefkosia Old Town 5K",area:"Λευκωσία",desc:"Μέσα στα τείχη της Λευκωσίας — ιστορικό route που κόβει την ανάσα.",distance:"5.2",elevation:"20",time:"25–35'",difficulty:"easy",type:"road",tags:["urban","historic","flat"],lat:35.168,lng:33.362},
+  {id:4,name:"Akamas Coastal Trail",area:"Πάφος",desc:"Άγρια φύση, γκρεμοί, κρυστάλλινα νερά. Ένα από τα πιο εντυπωσιακά trail routes.",distance:"18",elevation:"850",time:"2h30'–3h30'",difficulty:"hard",type:"trail",tags:["trail","coastal","wild"],lat:35.055,lng:32.325},
+  {id:5,name:"Larnaka Salt Lake Run",area:"Λάρνακα",desc:"Τρέχεις δίπλα στη λίμνη με φλαμίνγκο τον χειμώνα. Επίπεδο, γρήγορο.",distance:"7",elevation:"10",time:"35–45'",difficulty:"easy",type:"road",tags:["flat","nature","flamingo"],lat:34.882,lng:33.615},
+  {id:6,name:"Prodromos Alpine Loop",area:"Τροόδος",desc:"Στα 1400m υψόμετρο. Κυκλικό route με εντυπωσιακά τοπία.",distance:"11",elevation:"380",time:"1h–1h30'",difficulty:"moderate",type:"trail",tags:["alpine","loop","mountain"],lat:34.943,lng:32.843},
+  {id:7,name:"Limassol Marina to Castle",area:"Λεμεσός",desc:"Urban route κατά μήκος του waterfront — από τη Marina μέχρι το Κάστρο.",distance:"6",elevation:"15",time:"30–40'",difficulty:"easy",type:"road",tags:["urban","waterfront","flat"],lat:34.672,lng:33.044},
+  {id:8,name:"Stavros tis Psokas Forest Run",area:"Πάφος",desc:"Μέσα στο κέδρινο δάσος, πιθανή συνάντηση με Μουφλόν.",distance:"9",elevation:"290",time:"55'–1h20'",difficulty:"moderate",type:"trail",tags:["forest","wildlife","cedar"],lat:34.985,lng:32.638}
+];
+
+// LEADERBOARD DATA per route per category
+const leaderboardData={
+  1:{
+    time:[
+      {name:"Νίκος Π.",city:"Λεμεσός",val:"41:12",initials:"ΝΠ",color:"#C4622D",date:"14 Μαΐ 2026"},
+      {name:"Μαρία Κ.",city:"Λεμεσός",val:"42:55",initials:"ΜΚ",color:"#5A6B3A",date:"3 Μαΐ 2026"},
+      {name:"Vasilis",city:"Λεμεσός",val:"43:22",initials:"V",color:"#FC4C02",date:"12 Απρ 2026",isMe:true},
+      {name:"Ανδρέας Σ.",city:"Λεμεσός",val:"44:01",initials:"ΑΣ",color:"#4A7A9B",date:"28 Απρ 2026"},
+      {name:"Ελένη Μ.",city:"Λάρνακα",val:"44:38",initials:"ΕΜ",color:"#7B5EA7",date:"1 Μαΐ 2026"},
+    ],
+    pace:[
+      {name:"Νίκος Π.",city:"Λεμεσός",val:"4:51/km",initials:"ΝΠ",color:"#C4622D",date:"14 Μαΐ 2026"},
+      {name:"Μαρία Κ.",city:"Λεμεσός",val:"5:03/km",initials:"ΜΚ",color:"#5A6B3A",date:"3 Μαΐ 2026"},
+      {name:"Vasilis",city:"Λεμεσός",val:"5:08/km",initials:"V",color:"#FC4C02",date:"12 Απρ 2026",isMe:true},
+      {name:"Ανδρέας Σ.",city:"Λεμεσός",val:"5:11/km",initials:"ΑΣ",color:"#4A7A9B",date:"28 Απρ 2026"},
+      {name:"Χρήστος Α.",city:"Λεμεσός",val:"5:19/km",initials:"ΧΑ",color:"#B5563A",date:"20 Απρ 2026"},
+    ],
+    runs:[
+      {name:"Μαρία Κ.",city:"Λεμεσός",val:"28×",initials:"ΜΚ",color:"#5A6B3A",date:"Τελ: 3 Μαΐ 2026"},
+      {name:"Νίκος Π.",city:"Λεμεσός",val:"21×",initials:"ΝΠ",color:"#C4622D",date:"Τελ: 14 Μαΐ 2026"},
+      {name:"Ελένη Μ.",city:"Λάρνακα",val:"17×",initials:"ΕΜ",color:"#7B5EA7",date:"Τελ: 1 Μαΐ 2026"},
+      {name:"Vasilis",city:"Λεμεσός",val:"12×",initials:"V",color:"#FC4C02",date:"Τελ: 12 Απρ 2026",isMe:true},
+      {name:"Ανδρέας Σ.",city:"Λεμεσός",val:"9×",initials:"ΑΣ",color:"#4A7A9B",date:"Τελ: 28 Απρ 2026"},
+    ],
+    elev:[
+      {name:"Νίκος Π.",city:"Λεμεσός",val:"+38m",initials:"ΝΠ",color:"#C4622D",date:"14 Μαΐ 2026"},
+      {name:"Vasilis",city:"Λεμεσός",val:"+35m",initials:"V",color:"#FC4C02",date:"12 Απρ 2026",isMe:true},
+      {name:"Ανδρέας Σ.",city:"Λεμεσός",val:"+35m",initials:"ΑΣ",color:"#4A7A9B",date:"28 Απρ 2026"},
+      {name:"Μαρία Κ.",city:"Λεμεσός",val:"+33m",initials:"ΜΚ",color:"#5A6B3A",date:"3 Μαΐ 2026"},
+      {name:"Ελένη Μ.",city:"Λάρνακα",val:"+31m",initials:"ΕΜ",color:"#7B5EA7",date:"1 Μαΐ 2026"},
+    ]
+  },
+  2:{
+    time:[
+      {name:"Κώστας Δ.",city:"Λεμεσός",val:"1:28:44",initials:"ΚΔ",color:"#C4622D",date:"10 Μαΐ 2026"},
+      {name:"Σοφία Λ.",city:"Λευκωσία",val:"1:31:20",initials:"ΣΛ",color:"#5A6B3A",date:"25 Απρ 2026"},
+      {name:"Παύλος Ν.",city:"Λεμεσός",val:"1:33:05",initials:"ΠΝ",color:"#4A7A9B",date:"2 Μαΐ 2026"},
+      {name:"Vasilis",city:"Λεμεσός",val:"1:34:10",initials:"V",color:"#FC4C02",date:"8 Μαρ 2026",isMe:true},
+      {name:"Ελένη Μ.",city:"Λάρνακα",val:"1:38:55",initials:"ΕΜ",color:"#7B5EA7",date:"15 Απρ 2026"},
+    ],
+    pace:[
+      {name:"Κώστας Δ.",city:"Λεμεσός",val:"6:20/km",initials:"ΚΔ",color:"#C4622D",date:"10 Μαΐ 2026"},
+      {name:"Σοφία Λ.",city:"Λευκωσία",val:"6:31/km",initials:"ΣΛ",color:"#5A6B3A",date:"25 Απρ 2026"},
+      {name:"Vasilis",city:"Λεμεσός",val:"6:45/km",initials:"V",color:"#FC4C02",date:"8 Μαρ 2026",isMe:true},
+      {name:"Παύλος Ν.",city:"Λεμεσός",val:"6:50/km",initials:"ΠΝ",color:"#4A7A9B",date:"2 Μαΐ 2026"},
+      {name:"Ελένη Μ.",city:"Λάρνακα",val:"7:03/km",initials:"ΕΜ",color:"#7B5EA7",date:"15 Απρ 2026"},
+    ],
+    runs:[
+      {name:"Κώστας Δ.",city:"Λεμεσός",val:"14×",initials:"ΚΔ",color:"#C4622D",date:"Τελ: 10 Μαΐ 2026"},
+      {name:"Σοφία Λ.",city:"Λευκωσία",val:"11×",initials:"ΣΛ",color:"#5A6B3A",date:"Τελ: 25 Απρ 2026"},
+      {name:"Vasilis",city:"Λεμεσός",val:"6×",initials:"V",color:"#FC4C02",date:"Τελ: 8 Μαρ 2026",isMe:true},
+      {name:"Παύλος Ν.",city:"Λεμεσός",val:"5×",initials:"ΠΝ",color:"#4A7A9B",date:"Τελ: 2 Μαΐ 2026"},
+      {name:"Ελένη Μ.",city:"Λάρνακα",val:"4×",initials:"ΕΜ",color:"#7B5EA7",date:"Τελ: 15 Απρ 2026"},
+    ],
+    elev:[
+      {name:"Κώστας Δ.",city:"Λεμεσός",val:"+638m",initials:"ΚΔ",color:"#C4622D",date:"10 Μαΐ 2026"},
+      {name:"Vasilis",city:"Λεμεσός",val:"+624m",initials:"V",color:"#FC4C02",date:"8 Μαρ 2026",isMe:true},
+      {name:"Σοφία Λ.",city:"Λευκωσία",val:"+618m",initials:"ΣΛ",color:"#5A6B3A",date:"25 Απρ 2026"},
+      {name:"Παύλος Ν.",city:"Λεμεσός",val:"+611m",initials:"ΠΝ",color:"#4A7A9B",date:"2 Μαΐ 2026"},
+      {name:"Ελένη Μ.",city:"Λάρνακα",val:"+605m",initials:"ΕΜ",color:"#7B5EA7",date:"15 Απρ 2026"},
+    ]
+  }
+};
+// Fill remaining routes with generic data
+[3,4,5,6,7,8].forEach(id=>{
+  const names=[["Αλέξης Γ.","ΑΓ","#C4622D"],["Δήμητρα Π.","ΔΠ","#5A6B3A"],["Γιώργος Χ.","ΓΧ","#4A7A9B"],["Κατερίνα Ν.","ΚΝ","#7B5EA7"],["Σπύρος Μ.","ΣΜ","#B5563A"]];
+  const r=routes.find(x=>x.id===id);
+  const dist=parseFloat(r.distance);
+  const baseSec=Math.round(dist*310+Math.random()*120);
+  const mkTime=s=>`${Math.floor(s/3600)?Math.floor(s/3600)+'h':''} ${Math.floor((s%3600)/60)}:${String(s%60).padStart(2,'0')}`.trim().replace(/^ /,'');
+  const mkPace=s=>{const p=Math.round(s/dist);return `${Math.floor(p/60)}:${String(p%60).padStart(2,'0')}/km`;};
+  leaderboardData[id]={
+    time:names.map(([n,i,c],idx)=>({name:n,city:"Κύπρος",initials:i,color:c,val:mkTime(baseSec+idx*45),date:`${10+idx} Μαΐ 2026`})),
+    pace:names.map(([n,i,c],idx)=>({name:n,city:"Κύπρος",initials:i,color:c,val:mkPace(baseSec+idx*40),date:`${10+idx} Μαΐ 2026`})),
+    runs:names.map(([n,i,c],idx)=>({name:n,city:"Κύπρος",initials:i,color:c,val:`${15-idx*2}×`,date:`Τελ: ${10+idx} Μαΐ 2026`})),
+    elev:names.map(([n,i,c],idx)=>({name:n,city:"Κύπρος",initials:i,color:c,val:`+${parseInt(r.elevation)+idx*5}m`,date:`${10+idx} Μαΐ 2026`}))
+  };
+});
+
+const mockAthlete={name:"Vasilis",initials:"V",runsPerMonth:14,kmPerMonth:68,pace:"5:12",completedRoutes:[1,2,5,7],
+  runData:{1:{date:"12 Απρ 2026",pace:"5:08/km",time:"43'22\""},2:{date:"8 Μαρ 2026",pace:"6:45/km",time:"1h34'10\""},5:{date:"2 Φεβ 2026",pace:"5:22/km",time:"37'41\""},7:{date:"19 Απρ 2026",pace:"5:05/km",time:"30'28\""}}
+};
+
+let stravaConnected=false,selectedId=null,activeFilter='all',currentView='map',activeLbRoute=1,activeLbCat='time';
+let map,markers={};
+
+// VIEW SWITCHING
+function switchView(view,navEl){
+  currentView=view;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  const viewMap2={'map':'viewMap','leaderboard':'viewLeaderboard','races':'viewRaces'};
+  document.getElementById(viewMap2[view]||'viewMap').classList.add('active');
+  const tabMap2={'map':'tabMap','leaderboard':'tabLb','races':'tabRaces'};
+  document.getElementById(tabMap2[view]||'tabMap').classList.add('active');
+  if(navEl)navEl.classList.add('active');
+  document.getElementById('filterBar').style.display=view==='map'?'flex':'none';
+  if(view==='leaderboard'){renderLeaderboard();if(map)setTimeout(()=>map.invalidateSize(),50);}
+  if(view==='races'){renderRaces();}
+  closePanel();
+}
+
+// MAP
+function initMap(){
+  map=L.map('map',{center:[34.92,33.0],zoom:9});
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'',subdomains:'abcd',maxZoom:19}).addTo(map);
+  routes.forEach(r=>addMarker(r));
+}
+function getMarkerIcon(route,selected){
+  const sz=selected?20:13;
+  const done=stravaConnected&&mockAthlete.completedRoutes.includes(route.id);
+  const col=done?'#FC4C02':route.difficulty==='easy'?'#6BAE6B':route.difficulty==='moderate'?'#D4A843':'#C4622D';
+  const brd=done?'#FF8C6B':'white';
+  return L.divIcon({html:`<div style="width:${sz}px;height:${sz}px;background:${col};border:2px solid ${brd};border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.3);"></div>`,className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
+}
+function addMarker(route){
+  const m=L.marker([route.lat,route.lng],{icon:getMarkerIcon(route,false)}).addTo(map);
+  m.on('click',()=>selectRoute(route.id));
+  markers[route.id]=m;
+}
+function refreshMarkers(){Object.entries(markers).forEach(([rid,m])=>m.setIcon(getMarkerIcon(routes.find(r=>r.id==rid),rid==selectedId)));}
+
+function renderSidebar(filter){
+  const sb=document.getElementById('sidebar');
+  const filtered=routes.filter(r=>{
+    if(filter==='all')return true;
+    if(['easy','moderate','hard'].includes(filter))return r.difficulty===filter;
+    if(filter==='trail')return r.type==='trail';
+    if(filter==='road')return r.type==='road';
+    if(filter==='flat')return r.tags.includes('flat');
+    if(filter==='ran')return stravaConnected&&mockAthlete.completedRoutes.includes(r.id);
+    return true;
+  });
+  sb.innerHTML='';
+  if(!filtered.length){sb.innerHTML='<div class="empty-sidebar"><p>Δεν βρέθηκαν routes.</p></div>';return;}
+  filtered.forEach(route=>{
+    const done=stravaConnected&&mockAthlete.completedRoutes.includes(route.id);
+    const rd=done?mockAthlete.runData[route.id]:null;
+    const diffLabel=route.difficulty==='easy'?'Εύκολο':route.difficulty==='moderate'?'Μέτριο':'Δύσκολο';
+    const card=document.createElement('div');
+    card.className='route-card'+(selectedId===route.id?' selected':'')+(done?' completed':'');
+    card.dataset.id=route.id;
+    card.innerHTML=`
+      <div class="completed-badge ${done?'show':''}"><svg width="8" height="8" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg><span>Το έχεις τρέξει</span></div>
+      <div class="route-card-top"><div class="route-name">${route.name}</div><span class="diff-badge badge-${route.difficulty}">${diffLabel}</span></div>
+      <div class="route-desc">${route.desc}</div>
+      <div class="route-stats">
+        <div class="rs"><span class="rs-val">${route.distance}km</span><span class="rs-key">Απόσταση</span></div>
+        <div class="rs"><span class="rs-val">+${route.elevation}m</span><span class="rs-key">Υψόμετρο</span></div>
+        <div class="rs"><span class="rs-val">${route.time}</span><span class="rs-key">Ώρα</span></div>
+      </div>
+      <div class="route-tags">${route.tags.map(t=>`<span class="tag">#${t}</span>`).join('')}</div>
+      ${done&&rd?`<div class="strava-run-info show"><div class="strava-run-date">Τελευταία: ${rd.date}</div><div class="strava-run-stats"><div class="sri"><div class="sri-val">${rd.pace}</div><div class="sri-key">Ρυθμός</div></div><div class="sri"><div class="sri-val">${rd.time}</div><div class="sri-key">Χρόνος</div></div></div></div>`:''}
+    `;
+    card.addEventListener('click',()=>selectRoute(route.id));
+    sb.appendChild(card);
+  });
+}
+
+function selectRoute(id){
+  selectedId=id;
+  const route=routes.find(r=>r.id===id);
+  if(!route)return;
+  refreshMarkers();
+  map.flyTo([route.lat,route.lng],12,{duration:1.2});
+  document.querySelectorAll('.route-card').forEach(c=>c.classList.toggle('selected',c.dataset.id==id));
+  const done=stravaConnected&&mockAthlete.completedRoutes.includes(route.id);
+  const panel=document.getElementById('detailPanel');
+  document.getElementById('dp-title').textContent=route.name;
+  document.getElementById('dp-area').textContent=route.area+' · '+(route.type==='trail'?'Trail':'Άσφαλτος');
+  document.getElementById('dp-dist').textContent=route.distance+'km';
+  document.getElementById('dp-elev').textContent='+'+route.elevation+'m';
+  document.getElementById('dp-time').textContent=route.time;
+  document.getElementById('dp-diff').textContent=route.difficulty==='easy'?'Εύκολο':route.difficulty==='moderate'?'Μέτριο':'Δύσκολο';
+  const badge=document.getElementById('dpStravaBadge');
+  if(done){const rd=mockAthlete.runData[route.id];badge.classList.add('show');document.getElementById('dpStravaText').textContent=`${rd.date} · ${rd.pace}`;panel.classList.add('completed-route');}
+  else{badge.classList.remove('show');panel.classList.remove('completed-route');}
+  const lnk=document.getElementById('dpStravaLink');
+  stravaConnected?lnk.classList.add('show'):lnk.classList.remove('show');
+  panel.classList.add('show');
+}
+
+function closePanel(){
+  selectedId=null;
+  document.getElementById('detailPanel').classList.remove('show');
+  document.querySelectorAll('.route-card').forEach(c=>c.classList.remove('selected'));
+  refreshMarkers();
+  if(map)map.flyTo([34.92,33.0],9,{duration:1});
+}
+
+// LEADERBOARD
+function initLbRouteButtons(){
+  const wrap=document.getElementById('lbRouteSelect');
+  wrap.innerHTML='';
+  routes.forEach(r=>{
+    const btn=document.createElement('button');
+    btn.className='lb-route-btn'+(r.id===activeLbRoute?' active':'');
+    btn.textContent=r.name.length>22?r.name.substring(0,22)+'…':r.name;
+    btn.onclick=()=>{activeLbRoute=r.id;document.querySelectorAll('.lb-route-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderLeaderboard();};
+    wrap.appendChild(btn);
+  });
+}
+
+function switchCat(cat,btn){
+  activeLbCat=cat;
+  document.querySelectorAll('.lb-cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLeaderboard();
+}
+
+function renderLeaderboard(){
+  initLbRouteButtons();
+  const data=leaderboardData[activeLbRoute]?.[activeLbCat]||[];
+
+  // My rank
+  const myIdx=data.findIndex(d=>d.isMe);
+  const banner=document.getElementById('myRankBanner');
+  if(stravaConnected&&myIdx>=0){
+    banner.classList.add('show');
+    document.getElementById('myRankVal').textContent=`#${myIdx+1} από ${data.length} runners`;
+    document.getElementById('myRecordVal').textContent=data[myIdx].val;
+  } else {banner.classList.remove('show');}
+
+  // Podium (top 3)
+  const top3=data.slice(0,3);
+  const order=[1,0,2]; // visual order: 2nd, 1st, 3rd
+  const heights=['b2','b1','b3'];
+  const medals=['🥈','🥇','🥉'];
+  const pClasses=['p2','p1','p3'];
+  const podium=document.getElementById('lbPodium');
+  podium.innerHTML='';
+  order.forEach((dataIdx,visualIdx)=>{
+    const entry=top3[dataIdx];
+    if(!entry)return;
+    const place=document.createElement('div');
+    place.className='podium-place';
+    place.innerHTML=`
+      <div class="podium-medal">${medals[visualIdx]}</div>
+      <div class="podium-avatar ${pClasses[visualIdx]}" style="background:${entry.color}">${entry.initials}${entry.isMe?'<span style="position:absolute;font-size:.4rem">★</span>':''}</div>
+      <div class="podium-name">${entry.name}${entry.isMe?'<span class="lb-you-badge">εσύ</span>':''}</div>
+      <div class="podium-val">${entry.val}</div>
+      <div class="podium-key">${entry.city}</div>
+      <div class="podium-bar"><div class="bar-inner ${heights[visualIdx]}"></div></div>
+    `;
+    podium.appendChild(place);
+  });
+
+  // Full table
+  const tbody=document.getElementById('lbTableBody');
+  tbody.innerHTML='';
+  data.forEach((entry,idx)=>{
+    const row=document.createElement('div');
+    row.className='lb-row'+(idx<3?' top3':'');
+    const rankClass=idx===0?'r1':idx===1?'r2':idx===2?'r3':'';
+    const rankIcon=idx===0?'🥇':idx===1?'🥈':idx===2?'🥉':idx+1;
+    row.innerHTML=`
+      <div class="lb-rank ${rankClass}">${rankIcon}</div>
+      <div class="lb-runner">
+        <div class="lb-avatar" style="background:${entry.color}">${entry.initials}</div>
+        <div>
+          <div class="lb-runner-name">${entry.name}${entry.isMe&&stravaConnected?'<span class="lb-you-badge">εσύ</span>':''}</div>
+          <div class="lb-runner-city">${entry.city}</div>
+        </div>
+      </div>
+      <div class="lb-val ${idx===0?'highlight':''}">${entry.val}</div>
+      <div class="lb-date">${entry.date}</div>
+      <div></div>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+// STRAVA
+function openStravaModal(){document.getElementById('stravaModalOverlay').classList.add('show');}
+function closeStravaModal(){document.getElementById('stravaModalOverlay').classList.remove('show');}
+
+const STRAVA_CLIENT_ID = '252501';
+const STRAVA_REDIRECT_URI = 'https://majestic-pudding-2a9d02.netlify.app';
+const STRAVA_SCOPE = 'read,activity:read';
+
+function initiateStravaLogin() {
+  const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&redirect_uri=${encodeURIComponent(STRAVA_REDIRECT_URI)}&response_type=code&scope=${STRAVA_SCOPE}&approval_prompt=auto`;
+  window.location.href = authUrl;
+}
+
+async function handleStravaCallback() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if (!code) return;
+
+  try {
+    const res = await fetch(`/.netlify/functions/strava-auth?code=${code}`);
+    const data = await res.json();
+    if (data.access_token) {
+      // Store tokens
+      sessionStorage.setItem('strava_token', data.access_token);
+      sessionStorage.setItem('strava_athlete', JSON.stringify(data.athlete));
+      // Clean URL
+      window.history.replaceState({}, '', '/');
+      // Load activities and connect
+      await loadStravaActivities(data.access_token, data.athlete);
+    }
+  } catch(err) {
+    console.error('Strava auth error:', err);
+    showToast('Σφάλμα σύνδεσης Strava — δοκίμασε ξανά');
+  }
+}
+
+async function loadStravaActivities(token, athlete) {
+  try {
+    const res = await fetch(`/.netlify/functions/strava-activities?access_token=${token}&per_page=100`);
+    const activities = await res.json();
+    // Filter runs only
+    const runs = activities.filter(a => a.type === 'Run');
+    connectStravaUI(athlete, runs);
+  } catch(err) {
+    console.error('Activities error:', err);
+  }
+}
+
+function connectStravaUI(athlete, runs) {
+  stravaConnected = true;
+  const name = athlete.firstname + (athlete.lastname ? ' ' + athlete.lastname[0] + '.' : '');
+  const initials = (athlete.firstname[0] + (athlete.lastname?.[0] || '')).toUpperCase();
+
+  // Match runs to routes based on location proximity
+  const matched = matchRunsToRoutes(runs);
+
+  document.getElementById('stravaBanner').classList.add('hidden');
+  document.getElementById('athleteDashboard').classList.add('show');
+  document.getElementById('headerStravaBtn').style.display = 'none';
+  document.getElementById('dashName').textContent = athlete.firstname;
+  document.getElementById('dashAvatar').textContent = initials;
+
+  // Real stats
+  const recentRuns = runs.slice(0, 30);
+  const totalKm = recentRuns.reduce((s,r) => s + r.distance/1000, 0);
+  const avgPaceMs = recentRuns.length ? recentRuns.reduce((s,r) => s + (r.moving_time/(r.distance/1000)), 0) / recentRuns.length : 0;
+  const paceMin = Math.floor(avgPaceMs/60);
+  const paceSec = Math.round(avgPaceMs%60);
+
+  document.getElementById('kpiRuns').textContent = recentRuns.length;
+  document.getElementById('kpiKm').textContent = Math.round(totalKm) + 'km';
+  document.getElementById('kpiPace').textContent = `${paceMin}:${String(paceSec).padStart(2,'0')}/km`;
+
+  const count = matched.length;
+  document.getElementById('progressCount').textContent = count;
+  document.getElementById('progressFill').style.width = Math.round(count/routes.length*100) + '%';
+  document.getElementById('ranFilterBtn').style.display = 'flex';
+
+  refreshMarkers();
+  renderSidebar(activeFilter);
+  if(currentView==='leaderboard') renderLeaderboard();
+  if(currentView==='races') renderRaces();
+  showToast(`✓ Συνδέθηκες · ${count} routes βρέθηκαν στο ιστορικό σου`);
+}
+
+function matchRunsToRoutes(runs) {
+  // Match runs to our routes based on start coordinates proximity
+  const routeCoords = {
+    1: {lat:34.685, lng:33.055}, 2: {lat:34.921, lng:32.878},
+    3: {lat:35.168, lng:33.362}, 4: {lat:35.055, lng:32.325},
+    5: {lat:34.882, lng:33.615}, 6: {lat:34.943, lng:32.843},
+    7: {lat:34.672, lng:33.044}, 8: {lat:34.985, lng:32.638}
+  };
+  const matched = [];
+  for (const [routeId, coord] of Object.entries(routeCoords)) {
+    const found = runs.find(run => {
+      if (!run.start_latlng?.length) return false;
+      const dist = Math.sqrt(
+        Math.pow(run.start_latlng[0] - coord.lat, 2) +
+        Math.pow(run.start_latlng[1] - coord.lng, 2)
+      );
+      return dist < 0.05; // ~5km radius
+    });
+    if (found) matched.push(parseInt(routeId));
+  }
+  return matched;
+}
+
+// Check for OAuth callback on page load
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('code')) {
+    handleStravaCallback();
+  }
+  // Check stored session
+  const token = sessionStorage.getItem('strava_token');
+  const athleteData = sessionStorage.getItem('strava_athlete');
+  if (token && athleteData) {
+    loadStravaActivities(token, JSON.parse(athleteData));
+  }
+});
+
+function mockStravaLogin(){
+  closeStravaModal();
+  stravaConnected=true;
+  document.getElementById('stravaBanner').classList.add('hidden');
+  document.getElementById('athleteDashboard').classList.add('show');
+  document.getElementById('headerStravaBtn').style.display='none';
+  document.getElementById('dashName').textContent=mockAthlete.name;
+  document.getElementById('dashAvatar').textContent=mockAthlete.initials;
+  document.getElementById('kpiRuns').textContent=mockAthlete.runsPerMonth;
+  document.getElementById('kpiKm').textContent=mockAthlete.kmPerMonth+'km';
+  document.getElementById('kpiPace').textContent=mockAthlete.pace+'/km';
+  const count=mockAthlete.completedRoutes.length;
+  document.getElementById('progressCount').textContent=count;
+  document.getElementById('progressFill').style.width=Math.round(count/routes.length*100)+'%';
+  document.getElementById('ranFilterBtn').style.display='flex';
+  refreshMarkers();renderSidebar(activeFilter);
+  if(currentView==='leaderboard')renderLeaderboard();
+  if(currentView==='races')renderRaces();
+  showToast('✓ Συνδέθηκες · εμφανίζεσαι στο Leaderboard');
+}
+function disconnectStrava(){
+  stravaConnected=false;
+  document.getElementById('stravaBanner').classList.remove('hidden');
+  document.getElementById('athleteDashboard').classList.remove('show');
+  document.getElementById('headerStravaBtn').style.display='flex';
+  document.getElementById('ranFilterBtn').style.display='none';
+  if(activeFilter==='ran'){activeFilter='all';document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));document.querySelector('[data-filter="all"]').classList.add('active');}
+  refreshMarkers();renderSidebar(activeFilter);closePanel();
+  if(currentView==='leaderboard')renderLeaderboard();
+  if(currentView==='races')renderRaces();
+  showToast('Αποσυνδέθηκες από Strava');
+}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}
+function openModal(){document.getElementById('modalOverlay').classList.add('show');}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('show');}
+function submitRoute(){closeModal();showToast('Ευχαριστούμε! Το route θα ελεγχθεί σύντομα.');}
+
+document.querySelectorAll('.filter-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');activeFilter=btn.dataset.filter;renderSidebar(activeFilter);closePanel();
+  });
+});
+document.getElementById('modalOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+document.getElementById('stravaModalOverlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeStravaModal();});
+
+initAll();
+
+
+// ===== RACE DATA =====
+const raceData = {
+  "21": {
+    dist: "21km", label: "Ημιμαραθώνιος", finishers: 312, winner: "1:14:22", avgTime: "1:58:44",
+    results: [
+      {rank:1, name:"Νίκος Παπαδόπουλος", cat:"Άνδρες 30-39", time:"1:14:22", pace:"3:32/km", bib:"0021", initials:"ΝΠ", color:"#C4622D"},
+      {rank:2, name:"Κώστας Δημητρίου", cat:"Άνδρες 20-29", time:"1:16:08", pace:"3:37/km", bib:"0034", initials:"ΚΔ", color:"#5A6B3A"},
+      {rank:3, name:"Ανδρέας Σταύρου", cat:"Άνδρες 40-49", time:"1:17:45", pace:"3:42/km", bib:"0007", initials:"ΑΣ", color:"#4A7A9B"},
+      {rank:4, name:"Vasilis", cat:"Άνδρες 30-39", time:"1:34:10", pace:"4:29/km", bib:"0142", initials:"V", color:"#FC4C02", isMe:true},
+      {rank:5, name:"Μαρία Κωνσταντίνου", cat:"Γυναίκες 30-39", time:"1:38:55", pace:"4:42/km", bib:"0088", initials:"ΜΚ", color:"#7B5EA7"},
+      {rank:6, name:"Σπύρος Μιχαήλ", cat:"Άνδρες 40-49", time:"1:41:20", pace:"4:49/km", bib:"0156", initials:"ΣΜ", color:"#B5563A"},
+      {rank:7, name:"Ελένη Μάρκου", cat:"Γυναίκες 20-29", time:"1:43:05", pace:"4:54/km", bib:"0203", initials:"ΕΜ", color:"#4A9B7A"},
+      {rank:8, name:"Γιώργος Χατζής", cat:"Άνδρες 50-59", time:"1:45:33", pace:"5:00/km", bib:"0067", initials:"ΓΧ", color:"#9B4A6B"},
+    ]
+  },
+  "10": {
+    dist: "10km", label: "10 χιλιόμετρα", finishers: 487, winner: "32:14", avgTime: "54:22",
+    results: [
+      {rank:1, name:"Παύλος Νεοκλέους", cat:"Άνδρες 20-29", time:"32:14", pace:"3:13/km", bib:"1002", initials:"ΠΝ", color:"#C4622D"},
+      {rank:2, name:"Αλέξης Γεωργίου", cat:"Άνδρες 30-39", time:"33:45", pace:"3:22/km", bib:"1018", initials:"ΑΓ", color:"#5A6B3A"},
+      {rank:3, name:"Σοφία Λεοντίου", cat:"Γυναίκες 25-34", time:"36:02", pace:"3:36/km", bib:"1031", initials:"ΣΛ", color:"#4A7A9B"},
+      {rank:4, name:"Χρήστος Αντωνίου", cat:"Άνδρες 40-49", time:"37:28", pace:"3:45/km", bib:"1055", initials:"ΧΑ", color:"#7B5EA7"},
+      {rank:5, name:"Δήμητρα Πέτρου", cat:"Γυναίκες 30-39", time:"39:15", pace:"3:55/km", bib:"1072", initials:"ΔΠ", color:"#B5563A"},
+      {rank:6, name:"Κατερίνα Νικολάου", cat:"Γυναίκες 20-29", time:"40:33", pace:"4:03/km", bib:"1089", initials:"ΚΝ", color:"#4A9B7A"},
+      {rank:7, name:"Μιχάλης Σωτηρίου", cat:"Άνδρες 50-59", time:"42:11", pace:"4:13/km", bib:"1104", initials:"ΜΣ", color:"#9B4A6B"},
+      {rank:8, name:"Ιωάννης Χρίστου", cat:"Άνδρες 30-39", time:"43:55", pace:"4:23/km", bib:"1128", initials:"ΙΧ", color:"#6B4A9B"},
+    ]
+  },
+  "5": {
+    dist: "5km", label: "5 χιλιόμετρα", finishers: 623, winner: "15:44", avgTime: "28:15",
+    results: [
+      {rank:1, name:"Ρένος Κυριακίδης", cat:"Άνδρες 20-29", time:"15:44", pace:"3:09/km", bib:"2003", initials:"ΡΚ", color:"#C4622D"},
+      {rank:2, name:"Άρης Παπαγεωργίου", cat:"Άνδρες 30-39", time:"16:12", pace:"3:14/km", bib:"2011", initials:"ΑΠ", color:"#5A6B3A"},
+      {rank:3, name:"Νατάσα Θεοδώρου", cat:"Γυναίκες 25-34", time:"17:38", pace:"3:32/km", bib:"2029", initials:"ΝΘ", color:"#4A7A9B"},
+      {rank:4, name:"Βασίλης Ιακώβου", cat:"Άνδρες 40-49", time:"18:05", pace:"3:37/km", bib:"2044", initials:"ΒΙ", color:"#7B5EA7"},
+      {rank:5, name:"Χριστίνα Σάββα", cat:"Γυναίκες 20-29", time:"18:44", pace:"3:45/km", bib:"2061", initials:"ΧΣ", color:"#B5563A"},
+      {rank:6, name:"Κυριάκος Μάμας", cat:"Άνδρες 50-59", time:"19:22", pace:"3:52/km", bib:"2078", initials:"ΚΜ", color:"#4A9B7A"},
+      {rank:7, name:"Λένια Αντωνίου", cat:"Γυναίκες 30-39", time:"20:11", pace:"4:02/km", bib:"2093", initials:"ΛΑ", color:"#9B4A6B"},
+      {rank:8, name:"Σταύρος Πιερής", cat:"Άνδρες 30-39", time:"20:45", pace:"4:09/km", bib:"2107", initials:"ΣΠ", color:"#6B4A9B"},
+    ]
+  }
+};
+
+let activeRaceDist = "21";
+
+// Init after raceData is defined
+function initAll() { initMap(); renderSidebar('all'); renderLeaderboard(); renderRaces(); }
+
+function switchRaceDist(dist, btn) {
+  activeRaceDist = dist;
+  document.querySelectorAll('.race-dist-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRaces();
+}
+
+function renderRaces() {
+  const data = raceData[activeRaceDist];
+  if (!data) return;
+
+  // Stats bar
+  document.getElementById('raceStatsBar').innerHTML = `
+    <div class="rsb"><div class="rsb-val">${data.finishers}</div><div class="rsb-key">Τερμάτισαν</div></div>
+    <div class="rsb"><div class="rsb-val">${data.winner}</div><div class="rsb-key">Νικητής</div></div>
+    <div class="rsb"><div class="rsb-val">${data.avgTime}</div><div class="rsb-key">Μέσος χρόνος</div></div>
+    <div class="rsb"><div class="rsb-val">${data.dist}</div><div class="rsb-key">Απόσταση</div></div>
+  `;
+
+  // Strava prompt
+  document.getElementById('stravaConnectRaces').classList.toggle('hidden', stravaConnected);
+
+  // My result banner
+  const myEntry = data.results.find(r => r.isMe);
+  const banner = document.getElementById('myResultBanner');
+  if (stravaConnected && myEntry) {
+    banner.classList.add('show');
+    document.getElementById('myResultRank').textContent = `#${myEntry.rank} από ${data.finishers}`;
+    document.getElementById('myResultTime').textContent = myEntry.time;
+    document.getElementById('myResultPace').textContent = myEntry.pace;
+    document.getElementById('myResultCat').textContent = myEntry.cat;
+  } else {
+    banner.classList.remove('show');
+  }
+
+  // Podium
+  const top3 = data.results.slice(0, 3);
+  const order = [1, 0, 2];
+  const medals = ['🥈', '🥇', '🥉'];
+  const pClasses = ['p2', 'p1', 'p3'];
+  const barH = ['b2', 'b1', 'b3'];
+  const podium = document.getElementById('racePodium');
+  podium.innerHTML = '';
+  order.forEach((di, vi) => {
+    const e = top3[di];
+    if (!e) return;
+    const p = document.createElement('div');
+    p.className = 'podium-place';
+    p.innerHTML = `
+      <div class="podium-medal">${medals[vi]}</div>
+      <div class="podium-avatar ${pClasses[vi]}" style="background:${e.color}">${e.initials}</div>
+      <div class="podium-name">${e.name}</div>
+      <div class="podium-val">${e.time}</div>
+      <div class="podium-key">${e.cat}</div>
+      <div class="podium-bar"><div class="bar-inner ${barH[vi]}"></div></div>
+    `;
+    podium.appendChild(p);
+  });
+
+  // Table
+  const tbody = document.getElementById('raceTableBody');
+  tbody.innerHTML = '';
+  data.results.forEach((e, i) => {
+    const row = document.createElement('div');
+    row.className = 'race-row' + (i < 3 ? ' top3' : '');
+    const rankClass = i === 0 ? 'r1' : i === 1 ? 'r2' : i === 2 ? 'r3' : '';
+    const rankIcon = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : e.rank;
+    row.innerHTML = `
+      <div class="race-rank ${rankClass}">${rankIcon}</div>
+      <div class="race-runner">
+        <div class="race-avatar" style="background:${e.color}">${e.initials}</div>
+        <div>
+          <div class="race-runner-name">${e.name}${e.isMe && stravaConnected ? '<span class="you-badge">εσύ</span>' : ''}</div>
+          <div class="race-runner-cat">${e.cat}</div>
+        </div>
+      </div>
+      <div class="race-time ${i === 0 ? 'winner' : ''}">${e.time}</div>
+      <div class="race-pace">${e.pace}</div>
+      <div class="race-bib">#${e.bib}</div>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+</script>
+</body>
+</html>
