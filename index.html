@@ -885,6 +885,75 @@ async function loadStravaActivities(token, athlete) {
   }
 }
 
+
+// Decode Google encoded polyline
+function decodePolyline(encoded) {
+  if (!encoded) return [];
+  let index = 0, lat = 0, lng = 0, result = [];
+  while (index < encoded.length) {
+    let shift = 0, result_byte = 0, byte;
+    do { byte = encoded.charCodeAt(index++) - 63; result_byte |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+    lat += (result_byte & 1) ? ~(result_byte >> 1) : (result_byte >> 1);
+    shift = 0; result_byte = 0;
+    do { byte = encoded.charCodeAt(index++) - 63; result_byte |= (byte & 0x1f) << shift; shift += 5; } while (byte >= 0x20);
+    lng += (result_byte & 1) ? ~(result_byte >> 1) : (result_byte >> 1);
+    result.push([lat / 1e5, lng / 1e5]);
+  }
+  return result;
+}
+
+let myRunPolylines = [];
+
+function displayMyRuns(runs) {
+  // Clear existing polylines
+  myRunPolylines.forEach(p => map.removeLayer(p));
+  myRunPolylines = [];
+
+  const cyprusBounds = { minLat: 34.5, maxLat: 35.8, minLng: 32.0, maxLng: 34.6 };
+
+  runs.forEach(run => {
+    if (!run.map) return;
+    // Filter only Cyprus runs
+    if (run.start_latlng && run.start_latlng.length) {
+      const lat = run.start_latlng[0];
+      const lng = run.start_latlng[1];
+      if (lat < cyprusBounds.minLat || lat > cyprusBounds.maxLat || lng < cyprusBounds.minLng || lng > cyprusBounds.maxLng) return;
+    }
+    const coords = decodePolyline(run.map);
+    if (!coords.length) return;
+
+    const pace = run.moving_time / (run.distance / 1000);
+    const paceMin = Math.floor(pace / 60);
+    const paceSec = String(Math.round(pace % 60)).padStart(2, '0');
+    const distKm = (run.distance / 1000).toFixed(1);
+    const timeMin = Math.floor(run.moving_time / 60);
+    const date = new Date(run.start_date).toLocaleDateString('el-GR', {day:'numeric', month:'short', year:'numeric'});
+
+    const polyline = L.polyline(coords, {
+      color: '#FC4C02',
+      weight: 3,
+      opacity: 0.7
+    }).addTo(map);
+
+    polyline.bindPopup(`
+      <div class="popup-name">${run.name}</div>
+      <div class="popup-meta">${distKm}km · ${timeMin}' · ${paceMin}:${paceSec}/km</div>
+      <div class="popup-meta">${date}</div>
+    `);
+
+    polyline.on('mouseover', function() { this.setStyle({weight: 5, opacity: 1}); });
+    polyline.on('mouseout', function() { this.setStyle({weight: 3, opacity: 0.7}); });
+
+    myRunPolylines.push(polyline);
+  });
+
+  if (myRunPolylines.length > 0) {
+    showToast(`✓ ${myRunPolylines.length} runs εμφανίζονται στον χάρτη`);
+  } else {
+    showToast('Δεν βρέθηκαν runs στην Κύπρο');
+  }
+}
+
 function connectStravaUI(athlete, runs) {
   stravaConnected = true;
   const name = athlete.firstname + (athlete.lastname ? ' ' + athlete.lastname[0] + '.' : '');
@@ -919,7 +988,8 @@ function connectStravaUI(athlete, runs) {
   renderSidebar(activeFilter);
   if(currentView==='leaderboard') renderLeaderboard();
   if(currentView==='races') renderRaces();
-  showToast(`✓ Συνδέθηκες · ${count} routes βρέθηκαν στο ιστορικό σου`);
+  showToast(`✓ Συνδέθηκες · ${runs.length} activities βρέθηκαν`);
+  displayMyRuns(runs);
 }
 
 function matchRunsToRoutes(runs) {
