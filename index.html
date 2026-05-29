@@ -663,7 +663,7 @@ function switchView(view,navEl){
   if(navEl)navEl.classList.add('active');
   document.getElementById('filterBar').style.display=view==='map'?'flex':'none';
   if(view==='leaderboard'){renderLeaderboard();if(map)setTimeout(()=>map.invalidateSize(),50);}
-  if(view==='races'){renderRaces();}
+  if(view==='races'){ if(typeof raceData !== 'undefined') renderRaces(); }
   closePanel();
 }
 
@@ -1054,7 +1054,7 @@ const raceData = {
 let activeRaceDist = "21";
 
 // Init after raceData is defined
-function initAll() { initMap(); renderSidebar('all'); renderLeaderboard(); renderRaces(); }
+function initAll() { initMap(); renderSidebar('all'); renderLeaderboard(); }
 
 function switchRaceDist(dist, btn) {
   activeRaceDist = dist;
