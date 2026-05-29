@@ -843,7 +843,7 @@ function closeStravaModal(){document.getElementById('stravaModalOverlay').classL
 
 const STRAVA_CLIENT_ID = '252501';
 const STRAVA_REDIRECT_URI = 'https://steady-genie-2aa141.netlify.app';
-const STRAVA_SCOPE = 'read,activity:read';
+const STRAVA_SCOPE = 'read,activity:read,activity:read_all';
 
 function initiateStravaLogin() {
   const authUrl = `https://www.strava.com/oauth/authorize?client_id=${STRAVA_CLIENT_ID}&redirect_uri=${encodeURIComponent(STRAVA_REDIRECT_URI)}&response_type=code&scope=${STRAVA_SCOPE}&approval_prompt=auto`;
