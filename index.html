@@ -454,11 +454,9 @@ const CLIENT_ID='252501';
 const REDIRECT_URI='https://steady-genie-2aa141.netlify.app';
 const SCOPE='read,activity:read,activity:read_all';
 
-// ===== SUPABASE CONFIG =====
-const SUPABASE_URL = 'https://lxmqzxihjrnvxqzqpcbk.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_ySO_nBpHfr8RRQk-S0iAKA_Aaos7WBy';
+// ===== RACES — loaded via Netlify Function (keys stay server-side) =====
+let races = [];
 
-// Normalize Supabase row → app format
 function normalizeRace(r) {
   return {
     id: r.id,
@@ -480,20 +478,11 @@ function normalizeRace(r) {
   };
 }
 
-// ===== RACES — loaded from Supabase =====
-let races = [];
-
 async function loadRaces() {
   try {
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/races?select=*&order=date.asc`, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
+    const res = await fetch('/.netlify/functions/get-races');
     const data = await res.json();
     races = data.map(normalizeRace);
-    // Render everything that depends on races
     renderSB('all');
     renderCalendar('all');
     renderLB();
