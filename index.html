@@ -454,9 +454,59 @@ const CLIENT_ID='252501';
 const REDIRECT_URI='https://steady-genie-2aa141.netlify.app';
 const SCOPE='read,activity:read,activity:read_all';
 
-// ===== REAL CYPRUS RACES 2026 =====
-const races = [
-  // JANUARY
+// ===== SUPABASE CONFIG =====
+const SUPABASE_URL = 'https://lxmqzxihjrnvxqzqpcbk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ySO_nBpHfr8RRQk-S0iAKA_Aaos7WBy';
+
+// Normalize Supabase row → app format
+function normalizeRace(r) {
+  return {
+    id: r.id,
+    name: r.name,
+    city: r.city,
+    area: r.area || r.city,
+    lat: parseFloat(r.lat),
+    lng: parseFloat(r.lng),
+    date: r.date,
+    dateStr: r.date_str || r.date,
+    type: r.type,
+    typeLabel: r.type_label || r.type,
+    dists: r.distances || [],
+    org: r.organizer || '—',
+    desc: r.description || '',
+    website: r.website_url || '#',
+    results: r.results_url || null,
+    status: r.status || 'upcoming',
+  };
+}
+
+// ===== RACES — loaded from Supabase =====
+let races = [];
+
+async function loadRaces() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/races?select=*&order=date.asc`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    const data = await res.json();
+    races = data.map(normalizeRace);
+    // Render everything that depends on races
+    renderSB('all');
+    renderCalendar('all');
+    renderLB();
+    races.forEach(r => addMarker(r));
+    document.getElementById('sfCount').textContent = `${races.length} αγώνες`;
+  } catch(err) {
+    console.error('Supabase error:', err);
+    toast('⚠️ Σφάλμα φόρτωσης αγώνων');
+  }
+}
+
+// PLACEHOLDER — αντικαθίσταται από Supabase
+const races_placeholder = [
   {id:1, name:"Nicosia New Year Run", city:"Λευκωσία", area:"Λευκωσία", lat:35.168, lng:33.362,
    date:"2026-01-01", dateStr:"1 Ιαν 2026", type:"road", typeLabel:"Road",
    dists:["5km","10km"], org:"Nicosia Running Club",
@@ -466,21 +516,21 @@ const races = [
   // MARCH  
   {id:2, name:"TUI Cyprus Marathon (Paphos)", city:"Πάφος", area:"Πάφος", lat:34.775, lng:32.423,
    date:"2026-03-07", dateStr:"7–8 Μαρ 2026", type:"road", typeLabel:"Road",
-   dists:["5km","10km","21.1km","42.2km"], org:"Logicom Cyprus Marathon",
-   desc:"Ο μεγαλύτερος αγώνας δρόμου της Κύπρου από το 1999. Ξεκινά στο σημείο γέννησης της Αφροδίτης με θέα τη Μεσόγειο, τερματίζει στο μεσαιωνικό κάστρο της Πάφου.",
-   website:"https://www.logicomcyprusmarathon.com", results:"https://www.logicomcyprusmarathon.com/results", status:"past"},
+   dists:["5km Sunset Run","10km","21.1km","42.2km"], org:"TUI / Logicom Cyprus Marathon",
+   desc:"Ο μεγαλύτερος αγώνας δρόμου της Κύπρου από το 1999. Ξεκινά στη Γέννηση της Αφροδίτης, τερματίζει στο μεσαιωνικό κάστρο της Πάφου. Rebranded ως TUI Cyprus Marathon.",
+   website:"https://www.logicomcyprusmarathon.com", results:"https://www.finishers.com/en/event/cyprus-marathon", status:"past"},
 
-  {id:3, name:"Limassol Marathon GSO", city:"Λεμεσός", area:"Λεμεσός", lat:34.675, lng:33.044,
+  {id:3, name:"XM Limassol Marathon", city:"Λεμεσός", area:"Λεμεσός", lat:34.675, lng:33.044,
    date:"2026-03-21", dateStr:"21–22 Μαρ 2026", type:"road", typeLabel:"Road",
-   dists:["5km","10km","21.1km","42.2km"], org:"Limassol Marathon Organization",
-   desc:"Ο δεύτερος μεγαλύτερος μαραθώνιος της Κύπρου. Επίπεδη διαδρομή κατά μήκος της παραλίας, εκκίνηση και τερματισμός στο Μόλο Λεμεσού. Boston Qualifier για πολλούς.",
-   website:"https://www.limassolmarathon.com", results:"https://www.limassolmarathon.com/results", status:"past"},
+   dists:["1km Kids","5km","10km","21.1km","42.2km"], org:"XM Limassol Marathon",
+   desc:"Ο μεγαλύτερος αθλητικός αγώνας της Κύπρου με 17,000+ συμμετέχοντες από 75+ χώρες. Επίπεδη παράκτια διαδρομή, Boston Qualifier. Certified AIMS & World Athletics.",
+   website:"https://www.limassolmarathon.com", results:"https://raceroster.com/events/2026/104422/xm-limassol-marathon-2026", status:"past"},
 
   {id:4, name:"Run for Autism — Αγία Νάπα", city:"Αγία Νάπα", area:"Αμμόχωστος", lat:34.987, lng:34.0,
    date:"2026-03-29", dateStr:"29 Μαρ 2026", type:"road", typeLabel:"Charity Run",
    dists:["5km","10km","21.1km"], org:"Smile Project Cyprus",
    desc:"Φιλανθρωπικός αγώνας για την ευαισθητοποίηση για τον αυτισμό. Διαδρομή: Nissi Bay → Αγία Θέκλα με εκπληκτική θέα στη θάλασσα.",
-   website:"https://www.runforautism.cy", status:"past"},
+   website:"https://smileprojectcyprus.org", status:"past"},
 
   // APRIL
   {id:5, name:"Ayia Napa Triathlon", city:"Αγία Νάπα", area:"Αμμόχωστος", lat:34.987, lng:34.0,
@@ -533,26 +583,26 @@ const races = [
    date:"2026-10-11", dateStr:"11 Οκτ 2026", type:"trail", typeLabel:"Trail Ultra",
    dists:["21km","42.2km","72km"], org:"Troodos Trail Org",
    desc:"Το flagship trail event της Κύπρου. Μαραθώνιος και ultra (72km) σε μονοπάτια του Τροόδους με τεράστιο υψομετρικό.",
-   website:"https://www.ahotu.com", status:"upcoming"},
+   website:"https://www.ahotu.com/calendar/trail-running/cyprus", status:"upcoming"},
 
   {id:13, name:"Paralimni Running Race", city:"Παραλίμνι", area:"Αμμόχωστος", lat:35.034, lng:33.983,
    date:"2026-10-11", dateStr:"11 Οκτ 2026", type:"road", typeLabel:"Road",
    dists:["5km","10km"], org:"Paralimni Running Club",
    desc:"Τοπικός αγώνας δρόμου στο Παραλίμνι. Οικογενειακή ατμόσφαιρα, ανοιχτός σε όλους.",
-   website:"#", status:"upcoming"},
+   website:"https://eventor.com.cy", status:"upcoming"},
 
   {id:14, name:"Paphos Trail Challenge", city:"Πάφος", area:"Πάφος", lat:35.055, lng:32.325,
    date:"2026-10-25", dateStr:"25 Οκτ 2026", type:"trail", typeLabel:"Trail",
    dists:["10km","21km","48km"], org:"Paphos Trail Events",
    desc:"Trail αγώνας στην περιοχή Ακάμας/Πάφου με άγρια φύση, γκρεμούς και εκπληκτική παράκτια θέα.",
-   website:"#", status:"upcoming"},
+   website:"https://eventor.com.cy", status:"upcoming"},
 
   // NOVEMBER
-  {id:15, name:"Larnaca Marathon", city:"Λάρνακα", area:"Λάρνακα", lat:34.918, lng:33.638,
+  {id:15, name:"Radisson Blu Larnaka Marathon", city:"Λάρνακα", area:"Λάρνακα", lat:34.918, lng:33.638,
    date:"2026-11-15", dateStr:"15 Νοε 2026", type:"road", typeLabel:"Road",
-   dists:["5km","10km","21.1km","42.2km"], org:"Larnaca Marathon Org",
-   desc:"Ο τρίτος μεγάλος road marathon της Κύπρου. Παράκτια διαδρομή, double loop του ημιμαραθωνίου, εξαιρετικά οργανωμένος από το 2017.",
-   website:"https://www.larnakamarathon.com", status:"upcoming"},
+   dists:["1km Kids","5km","10km","21.1km","42.2km"], org:"Larnaka Marathon Org",
+   desc:"13,000+ runners από 85 χώρες. Παράκτια διαδρομή κατά μήκος των Φοινικούδων, με θέα στη λίμνη αλατιού και τα φλαμίνγκο. Certified AIMS & World Athletics.",
+   website:"https://www.larnakamarathon.com", results:"https://raceroster.com/events/2026/112892/radisson-blu-larnaka-international-marathon-2026", status:"upcoming"},
 
   // DECEMBER / FUTURE  
   {id:16, name:"Leptos 4-Day Challenge", city:"Πάφος", area:"Πάφος", lat:34.775, lng:32.423,
@@ -638,7 +688,7 @@ function getTypeClass(type){
 function initMap(){
   map=L.map('map',{center:[34.92,33.0],zoom:8});
   L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{attribution:'',subdomains:'abcd',maxZoom:19}).addTo(map);
-  races.forEach(r=>addMarker(r));
+  // markers added after loadRaces()
 }
 
 function mkIcon(r, sel){
@@ -952,9 +1002,8 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 
 initMap();
-renderSB('all');
-renderCalendar('all');
 renderCommunity();
+loadRaces(); // φέρνει αγώνες από Supabase
 </script>
 </body>
 </html>
