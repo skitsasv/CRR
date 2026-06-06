@@ -1580,7 +1580,6 @@ async function confirmMatch(){
       confirmedRaceIds.add(race.id);
       invalidateLbCache(race.id);
       closeMatchModal();
-      // Check rank after save and show share card
       setTimeout(async ()=>{
         const lb = await loadLbData(race.id);
         const myIdx = lb.findIndex(e => e.strava_activity_id === run.id);
@@ -1599,6 +1598,11 @@ async function confirmMatch(){
       toast('⚠️ Σφάλμα αποθήκευσης');
       closeMatchModal();
     }
+  } catch(e) {
+    console.error(e);
+    toast('⚠️ Σφάλμα σύνδεσης');
+    closeMatchModal();
+  }
 }
 
 function skipMatch(){
